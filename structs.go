@@ -168,67 +168,6 @@ type Emoji struct {
 	Available     bool   `json:"available,omitempty"`
 }
 
-type Embed struct {
-	Title       string
-	Type        string
-	Description string
-	Url         string
-	Timestamp   string
-	Color       int
-	Footer      *EmbedFooter
-	Image       *EmbedImage
-	Thumbnail   *EmbedThumbnail
-	Video       *EmbedVideo
-	Provider    *EmbedProvider
-	Author      *EmbedAuthor
-	Fields      []EmbedField
-}
-
-type EmbedFooter struct {
-	Text         string `json:"text"`
-	IconUrl      string `json:"icon_url,omitempty"`
-	ProxyIconUrl string `json:"proxy_icon_url,omitempty"`
-}
-
-type EmbedImage struct {
-	Url      string `json:"url"`
-	ProxyUrl string `json:"proxy_url,omitempty"`
-	Height   int    `json:"height,omitempty"`
-	Width    int    `json:"width,omitempty"`
-}
-
-type EmbedThumbnail struct {
-	Url      string `json:"url"`
-	ProxyUrl string `json:"proxy_url,omitempty"`
-	Height   int    `json:"height,omitempty"`
-	Width    int    `json:"width,omitempty"`
-}
-
-type EmbedVideo struct {
-	Url      string `json:"url,omitempty"`
-	ProxyUrl string `json:"proxy_url,omitempty"`
-	Height   int    `json:"height,omitempty"`
-	Width    int    `json:"width,omitempty"`
-}
-
-type EmbedProvider struct {
-	Name string `json:"name,omitempty"`
-	Url  string `json:"url,omitempty"`
-}
-
-type EmbedAuthor struct {
-	Name         string `json:"name"`
-	Url          string `json:"url,omitempty"`
-	IconUrl      string `json:"icon_url,omitempty"`
-	ProxyIconUrl string `json:"proxy_icon_url"`
-}
-
-type EmbedField struct {
-	Name   string `json:"name"`
-	Value  string `json:"value"`
-	Inline bool   `json:"inline,omitempty"`
-}
-
 type Attachments struct {
 	Id           string  `json:"id"`
 	Filename     string  `json:"filename"`
@@ -282,28 +221,6 @@ type RoleColor struct {
 	PrimaryColor   int  `json:"primary_color"`
 	SecondaryColor *int `json:"secondary_color"`
 	TertiaryColor  *int `json:"tertiary_color"`
-}
-
-type User struct {
-	Id                   string                `json:"id"`
-	Username             string                `json:"username"`
-	Discriminator        string                `json:"discriminator"`
-	GlobalName           string                `json:"global_name"`
-	Avatar               string                `json:"avatar"`
-	Bot                  bool                  `json:"bot,omitempty"`
-	System               bool                  `json:"system,omitempty"`
-	MFAEnabled           bool                  `json:"mfa_enabled,omitempty"`
-	Banner               string                `json:"banner,omitempty"`
-	AccentColor          int                   `json:"accent_color,omitempty"`
-	Locale               string                `json:"locale,omitempty"`
-	Verified             bool                  `json:"verified,omitempty"`
-	Email                string                `json:"email,omitempty"`
-	Flags                int                   `json:"flags,omitempty"`
-	PremiumType          int                   `json:"premium_type,omitempty"`
-	PublicFlags          int                   `json:"public_flags,omitempty"`
-	AvatarDecorationData *AvatarDecorationData `json:"avatar_decoration_data,omitempty"`
-	Collectibles         *Collectible          `json:"collectible,omitempty"`
-	PrimaryGuild         *UserPrimaryGuild     `json:"primary_guild,omitempty"`
 }
 
 type UserPrimaryGuild struct {
@@ -451,4 +368,69 @@ type Overwrite struct {
 	Type  int    `json:"type"`
 	Allow string `json:"allow"`
 	Deny  string `json:"deny"`
+}
+
+type StickerItem struct {
+	Id         string `json:"id"`
+	Name       string `json:"name"`
+	FormatType int    `json:"format_type"`
+}
+
+type RoleSubscriptionData struct {
+	RoleSubscriptionListingId string `json:"role_subscription_listing_id"`
+	TierName                  string `json:"tier_name"`
+	TotalMonthsSubscribed     int    `json:"total_months_subscribed"`
+	IsRenewal                 bool   `json:"is_renewal"`
+}
+
+type ResolvedData struct {
+	Users       map[string]*User        `json:"users,omitempty"`
+	Members     map[string]*Member      `json:"members,omitempty"`
+	Roles       map[string]*Role        `json:"roles,omitempty"`
+	Channels    map[string]*Channel     `json:"channels,omitempty"`
+	Messages    map[string]*Message     `json:"messages,omitempty"`
+	Attachments map[string]*Attachments `json:"attachments,omitempty"`
+}
+
+type Poll struct {
+	Question         *PollMedia   `json:"question"`
+	Answers          []PollAnswer `json:"answers"`
+	Expiry           string       `json:"expiry"`
+	AllowMultiselect bool         `json:"allow_multiselect"`
+	LayoutType       int          `json:"layout_type"`
+	Results          *PollResults `json:"results,omitempty"`
+}
+
+type PollResults struct {
+	IsFinalized  bool              `json:"is_finalized"`
+	AnswerCounts []PollAnswerCount `json:"answer_counts"`
+}
+
+type PollAnswerCount struct {
+	Id      int  `json:"id"`
+	Count   int  `json:"count"`
+	MeVoted bool `json:"me_voted"`
+}
+
+type PollAnswer struct {
+	AnswerId  int        `json:"answer_id"`
+	PollMedia *PollMedia `json:"poll_media"`
+}
+
+type PollMedia struct {
+	Text  string `json:"text,omitempty"`
+	Emoji *Emoji `json:"emoji,omitempty"`
+}
+
+type Entitlement struct {
+	Id            string `json:"id"`
+	SkuId         string `json:"sku_id"`
+	ApplicationId string `json:"application_id	"`
+	UserId        string `json:"user_id,omitempty"`
+	Type          int    `json:"type"`
+	Deleted       bool   `json:"deleted"`
+	StartsAt      string `json:"starts_at"`
+	EndsAt        string `json:"ends_at"`
+	GuildId       string `json:"guild_id,omitempty"`
+	Consumed      bool   `json:"consumed,omitempty"`
 }

@@ -1,9 +1,10 @@
 package goscord
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Murilinho145SG/gouter/log"
 	"github.com/gorilla/websocket"
 )
 
@@ -19,9 +21,12 @@ const (
 )
 
 type Bot struct {
-	token  string
-	c      *websocket.Conn
-	events map[reflect.Type][]reflect.Value
+	token        string
+	c            *websocket.Conn
+	events       map[reflect.Type][]reflect.Value
+	url          string
+	lastSequence string
+	sessionId    string
 }
 
 type Payload struct {
@@ -44,8 +49,8 @@ func New(token string) *Bot {
 }
 
 func (b *Bot) Start() error {
-	url := fmt.Sprintf("wss://gateway.discord.gg/?v=%s&encoding=json", VERSION)
-	c, _, err := websocket.DefaultDialer.Dial(url, http.Header{})
+	b.url = fmt.Sprintf("wss://gateway.discord.gg/?v=%s&encoding=json", VERSION)
+	c, _, err := websocket.DefaultDialer.Dial(b.url, http.Header{})
 	if err != nil {
 		return err
 	}
@@ -76,8 +81,9 @@ func (b *Bot) Start() error {
 	identify := map[string]any{
 		"op": 2,
 		"d": map[string]any{
-			"token":   b.token,
-			"intents": 131071,
+			"token":      b.token,
+			"session_id": b.sessionId,
+			"intents":    131071,
 			"properties": map[string]string{
 				"os":      "windows",
 				"browser": "goscord",
@@ -95,13 +101,17 @@ func (b *Bot) Start() error {
 		for {
 			_, msg, err := c.ReadMessage()
 			if err != nil {
-				log.Println(err)
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					go b.reconnect()
+					continue
+				}
+				log.Error(err)
 				continue
 			}
 
 			var p Payload
 			if err := json.Unmarshal(msg, &p); err != nil {
-				log.Println(err)
+				log.Error(err)
 				return
 			}
 
@@ -109,10 +119,11 @@ func (b *Bot) Start() error {
 				continue
 			}
 
-			fmt.Println(*p.T)
+			log.Info(*p.T)
 			switch *p.T {
 			case "READY":
 				{
+					b.sessionId = p.D["session_id"].(string)
 				}
 			case "RESUMED":
 				{
@@ -222,7 +233,7 @@ func (b *Bot) Start() error {
 			// Messages
 			case "MESSAGE_CREATE":
 				{
-					b.TriggerEvent(NewMessageCreate(p.D))
+					b.TriggerEvent(NewMessageCreate(b, p.D))
 				}
 			case "MESSAGE_UPDATE":
 				{
@@ -279,6 +290,7 @@ func (b *Bot) Start() error {
 			// Interaction
 			case "INTERACTION_CREATE":
 				{
+					b.TriggerEvent(NewInteractionCreate(b, p.D))
 				}
 
 			// Others
@@ -293,6 +305,28 @@ func (b *Bot) Start() error {
 	}()
 
 	return nil
+}
+
+func (b *Bot) reconnect() {
+	time.Sleep(5 * time.Second)
+
+	c, _, err := websocket.DefaultDialer.Dial(b.url, http.Header{})
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	b.c = c
+
+	if b.sessionId != "" {
+		resume := map[string]any{
+			"op": 6,
+			"d": map[string]any{
+				"token":      b.token,
+				"session_id": b.sessionId,
+			},
+		}
+		c.WriteJSON(resume)
+	}
 }
 
 func (b *Bot) Stop() error {
@@ -320,6 +354,51 @@ func (b *Bot) TriggerEvent(event interface{}) {
 	t := reflect.TypeOf(event)
 
 	for _, handler := range b.events[t] {
-		handler.Call([]reflect.Value{reflect.ValueOf(event)})
+		go handler.Call([]reflect.Value{reflect.ValueOf(event)})
 	}
+}
+
+func (b *Bot) sendPost(endpoint string, body []byte) (io.ReadCloser, error) {
+	req, err := http.NewRequest("POST", "https://discord.com/api/v"+VERSION+endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+
+	client := &http.Client{}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bot "+b.token)
+	r, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	if r.StatusCode == 429 {
+		return b.sendPost(endpoint, body)
+	}
+
+	return r.Body, nil
+}
+
+func (b *Bot) sendGet(endpoint string) (io.ReadCloser, error) {
+	req, err := http.NewRequest("GET", "https://discord.com/api/v"+VERSION+endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	client := &http.Client{}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bot "+b.token)
+	r, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.StatusCode == 429 {
+		return b.sendGet(endpoint)
+	}
+
+	return r.Body, nil
 }
